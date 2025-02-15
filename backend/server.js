@@ -25,24 +25,60 @@ app.get("/users", async (req, res) => {
     res.json(data);
 });
 
-app.post("/users", async (req, res) => {
+app.post("/register", async (req, res) => {
+    const { email, password, name } = req.body;
 
-    const { email, name } = req.body;
-
-    const { data, error } = await supabase
-        .from("users")
-        .insert([{ email, name }])
-        .select();
+    // Cria usuário no Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+    });
 
     if (error) {
-        return res.status(400).json(error)
+        return res.status(400).json({ error: error.message });
     }
 
-    res.status(201).json(data);
-})
+    // Insere o usuário na tabela "users"
+    const { data: userData, error: userError } = await supabase
+        .from("users")
+        .insert([{ id: data.user.id, email, name }]);
+
+    if (userError) {
+        return res.status(400).json({ error: userError.message });
+    }
+
+    return res.status(201).json(userData);
+});
+
+app.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    // Busca o usuário pelo email
+    const { data: user, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .single();
+
+    if (userError || !user) {
+        return res.status(400).json({ error: "Usuário não encontrado" });
+    }
+
+    // Verifica a senha com a autenticação do Supabase
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
+
+    if (authError) {
+        return res.status(400).json({ error: "Credenciais inválidas" });
+    }
+
+    res.status(200).json({ user, session: authData.session });
+});
 
 app.post("/transactions", async (req, res) => {
-    const { user_id,description,type, amount, category, date } = req.body
+    const { user_id, description, type, amount, category, date } = req.body;
 
     const { data, error } = await supabase
         .from("transactions")
@@ -50,14 +86,23 @@ app.post("/transactions", async (req, res) => {
         .select();
 
     if (error) {
-        res.status(400).json(error);
+        return res.status(400).json(error); // Adicione "return" para evitar múltiplas respostas
     }
 
-    res.status(201).json(data)
-})
+    return res.status(201).json(data); // Retorna a resposta e evita erro
+});
 
 app.get("/transactions", async (req, res) => {
-    const { data, error } = await supabase.from("transactions").select("*");
+    const { user_id } = req.query; // Recebe o ID do usuário da query string
+
+    if (!user_id) {
+        return res.status(400).json({ error: "Usuário não autenticado" });
+    }
+
+    const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", user_id); // Filtra transações pelo usuário
 
     if (error) {
         return res.status(400).json(error);

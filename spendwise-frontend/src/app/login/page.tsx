@@ -1,18 +1,37 @@
 "use client";
 import { useState } from "react";
-import { useAuth } from "@/context/authContext";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-    const { login } = useAuth();
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
+
         try {
-            await login(email, password);
+            const response = await fetch("http://localhost:5000/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Erro ao fazer login. Verifique suas credenciais.");
+            }
+
+            const data = await response.json();
+            localStorage.setItem("user", JSON.stringify(data.user)); // Armazena usuário no localStorage
+
+            alert("Login realizado com sucesso!");
+            router.push("/dashboard"); // Redireciona para o Dashboard
         } catch (error) {
             alert(error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -27,6 +46,7 @@ export default function LoginPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="border p-2 rounded mb-3 text-gray-900"
+                        required
                     />
                     <input
                         type="password"
@@ -34,9 +54,13 @@ export default function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="border p-2 rounded mb-3 text-gray-900"
+                        required
                     />
-                    <button className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">
-                        Entrar
+                    <button
+                        className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition disabled:opacity-50"
+                        disabled={loading}
+                    >
+                        {loading ? "Entrando..." : "Entrar"}
                     </button>
                 </form>
                 <p className="text-center text-sm mt-3 text-gray-900">

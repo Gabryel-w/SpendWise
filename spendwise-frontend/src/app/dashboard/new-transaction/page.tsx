@@ -15,6 +15,9 @@ export default function NewTransaction() {
 
         // Obtém o usuário logado
         const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+        console.log(user);
+
         if (!user?.id) {
             console.error("Usuário não autenticado");
             return;
