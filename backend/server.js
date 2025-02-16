@@ -113,19 +113,18 @@ app.get("/transactions", async (req, res) => {
 
 app.put("/transactions/:id", async (req, res) => {
     const { id } = req.params;
-    const { type, amount, category, date } = req.body;
+    const { description, type, amount, category, date } = req.body;
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from("transactions")
-        .update({ type, amount, category, date })
-        .eq("id", id)
-        .select();
+        .update({ description, type, amount, category, date })
+        .eq("id", id);
 
     if (error) {
         return res.status(400).json(error);
     }
 
-    res.json(data);
+    res.json({ message: "Transação atualizada com sucesso." });
 });
 
 app.delete("/transactions/:id", async(req, res) => {
